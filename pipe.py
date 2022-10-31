@@ -81,7 +81,7 @@ class StableDiffusionPipeline(DiffusionPipeline):
         return_dict: bool = True,
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
         callback_steps: Optional[int] = 1,
-        use_custum_encoder=True,
+        use_custom_encoder=True,
         **kwargs,
     ):
         if isinstance(prompt, str):
@@ -102,7 +102,7 @@ class StableDiffusionPipeline(DiffusionPipeline):
                 f" {type(callback_steps)}."
             )
 
-        if not use_custum_encoder:
+        if not use_custom_encoder:
             # get prompt text embeddings
             text_inputs = self.tokenizer(
                 prompt,
@@ -155,7 +155,7 @@ class StableDiffusionPipeline(DiffusionPipeline):
                 )
             else:
                 uncond_tokens = negative_prompt
-            if not use_custum_encoder:
+            if not use_custom_encoder:
                 uncond_input = self.tokenizer(
                     uncond_tokens,
                     padding="max_length",
