@@ -34,7 +34,7 @@ class StableDiffusionPipeline(DiffusionPipeline):
             new_config = dict(scheduler.config)
             new_config["steps_offset"] = 1
             scheduler._internal_dict = FrozenDict(new_config)
-        
+
         self.embedder = FrozenCLIPEmbedderWithCustomWords(tokenizer, text_encoder)
 
         self.register_modules(
@@ -130,7 +130,6 @@ class StableDiffusionPipeline(DiffusionPipeline):
                 prompt_str = [prompt]
             text_embeddings = self.embedder(prompt_str)
 
-            
         # here `guidance_scale` is defined analog to the guidance weight `w` of equation (2)
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
         # corresponds to doing no classifier free guidance.
@@ -172,11 +171,6 @@ class StableDiffusionPipeline(DiffusionPipeline):
             uncond_embeddings = uncond_embeddings.repeat(batch_size, num_images_per_prompt, 1)
             uncond_embeddings = uncond_embeddings.view(batch_size * num_images_per_prompt, seq_len, -1)
 
-            # For classifier free guidance, we need to do two forward passes.
-            # Here we concatenate the unconditional and text embeddings into a single batch
-            # to avoid doing two forward passes
-            text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
-
         # get the initial random noise unless the user supplied it
 
         # Unlike in other pipelines, latents need to be generated in the target device
@@ -198,7 +192,7 @@ class StableDiffusionPipeline(DiffusionPipeline):
             latents = latents.to(self.device)
 
         # set timesteps
-        self.scheduler.set_timesteps(num_inference_steps)
+        self.scheduler.set_timesteps(num_inference_steps, device=self.device)
 
         # Some schedulers like PNDM have timesteps as arrays
         # It's more optimized to move all timesteps to correct device beforehand
@@ -217,20 +211,25 @@ class StableDiffusionPipeline(DiffusionPipeline):
             extra_step_kwargs["eta"] = eta
 
         for i, t in enumerate(self.progress_bar(timesteps_tensor)):
-            # expand the latents if we are doing classifier free guidance
-            latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
-            latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
-
-            # predict the noise residual
-            noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
-
-            # perform guidance
             if do_classifier_free_guidance:
-                noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+                # expand the latents if we are doing classifier free guidance
+                latent_model_input = latents # torch.cat([latents] * 2)
+                latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+                # predict the noise residual
+                noise_pred_text = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
+                noise_pred_uncond = self.unet(latent_model_input, t, encoder_hidden_states=uncond_embeddings).sample
+                # perform guidance
                 noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            else:
+                # expand the latents if we are doing classifier free guidance
+                latent_model_input = latents
+                # predict the noise residual
+                latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+                # perform guidance
+                noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
 
             # compute the previous noisy sample x_t -> x_t-1
-            latents = self.scheduler.step(noise_pred, t, latents, generator=generator, **extra_step_kwargs).prev_sample
+            latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
 
             # call the callback, if provided
             if callback is not None and i % callback_steps == 0:
@@ -238,7 +237,6 @@ class StableDiffusionPipeline(DiffusionPipeline):
 
         latents = 1 / 0.18215 * latents
         image = self.vae.decode(latents).sample
-
         image = (image / 2 + 0.5).clamp(0, 1)
 
         # we always cast to float32 as this does not cause significant overhead and is compatible with bfloa16
