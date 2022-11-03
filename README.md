@@ -55,7 +55,7 @@ with autocast("cuda"):
         num_inference_steps=30,
         guidance_scale=7.5,
         generator=generator,
-        use_custom_encoder=True,
+        use_custom_encoder=use_custom_encoder,
         CLIP_stop_at_last_layers=CLIP_stop_at_last_layers,
         ).images[0]
 
