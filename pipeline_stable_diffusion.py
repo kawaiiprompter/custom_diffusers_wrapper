@@ -83,7 +83,8 @@ class StableDiffusionPipeline(DiffusionPipeline):
         CLIP_stop_at_last_layers=1,
         **kwargs,
     ):
-        self.embedder = FrozenCLIPEmbedderWithCustomWords(self.tokenizer, self.text_encoder, CLIP_stop_at_last_layers=CLIP_stop_at_last_layers)
+        if use_custom_encoder:
+            self.embedder = FrozenCLIPEmbedderWithCustomWords(self.tokenizer, self.text_encoder, CLIP_stop_at_last_layers=CLIP_stop_at_last_layers)
 
         if isinstance(prompt, str):
             batch_size = 1
