@@ -7,7 +7,7 @@
 # HOW TO USE
 ```python
 !git clone https://github.com/kawaiiprompter/custom_diffusers_wrapper
-!pip install -qq diffusers
+!pip install -qq git+https://github.com/huggingface/diffusers
 !pip install -qq transformers scipy ftfy lark
 
 import sys
@@ -34,7 +34,6 @@ pipe = StableDiffusionPipeline.from_pretrained(
     torch_dtype=torch.float32,
     scheduler=scheduler
 ).to("cuda")
-pipe.enable_attention_slicing()
 
 prompt = "((masterpiece)), 1girl, aqua eyes, baseball cap, (((blonde hair))), closed mouth, earrings, green background, hat, hoop earrings, jewelry, looking at viewer, shirt, short hair, simple background, solo, upper body, yellow shirt"
 negative_prompt = "((ugly))"
