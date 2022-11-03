@@ -4,7 +4,7 @@
 * Based on https://github.com/AUTOMATIC1111/stable-diffusion-webui
 * This differs from the CompVis-based txt2img results due to sampler differences
 
-# HOW TO USE
+## HOW TO USE
 ```python
 !git clone https://github.com/kawaiiprompter/custom_diffusers_wrapper
 !pip install -qq git+https://github.com/huggingface/diffusers
@@ -62,6 +62,6 @@ with autocast("cuda"):
 image.save("test.png")
 ```
 
-# Credits
+## Credits
 * Stable Diffusion - https://github.com/CompVis/stable-diffusion
 * AUTOMATIC1111 - https://github.com/AUTOMATIC1111/stable-diffusion-webui
