@@ -35,8 +35,6 @@ class StableDiffusionPipeline(DiffusionPipeline):
             new_config["steps_offset"] = 1
             scheduler._internal_dict = FrozenDict(new_config)
 
-        self.embedder = FrozenCLIPEmbedderWithCustomWords(tokenizer, text_encoder)
-
         self.register_modules(
             vae=vae,
             text_encoder=text_encoder,
@@ -82,8 +80,11 @@ class StableDiffusionPipeline(DiffusionPipeline):
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
         callback_steps: Optional[int] = 1,
         use_custom_encoder=True,
+        CLIP_stop_at_last_layers=1,
         **kwargs,
     ):
+        self.embedder = FrozenCLIPEmbedderWithCustomWords(self.tokenizer, self.text_encoder, CLIP_stop_at_last_layers=CLIP_stop_at_last_layers)
+
         if isinstance(prompt, str):
             batch_size = 1
         elif isinstance(prompt, list):
