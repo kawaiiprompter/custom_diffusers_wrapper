@@ -1,4 +1,4 @@
-# custom_diffusers_wrapper
+# custom_diffusers_wrapper (Work in Progress)
 
 * Pipeline of txt2img in diffusers format implementing FrozenCLIPEmbedderWithCustomWords and CLIP stop at last layers
 * Based on https://github.com/AUTOMATIC1111/stable-diffusion-webui
