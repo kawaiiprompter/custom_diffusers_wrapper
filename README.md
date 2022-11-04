@@ -38,7 +38,7 @@ pipe = StableDiffusionPipeline.from_pretrained(
 prompt = "((masterpiece)), 1girl, aqua eyes, baseball cap, (((blonde hair))), closed mouth, earrings, green background, hat, hoop earrings, jewelry, looking at viewer, shirt, short hair, simple background, solo, upper body, yellow shirt"
 negative_prompt = "((ugly))"
 
-# use FrozenCLIPEmbedderWithCustomWords or original diffusers embedder
+# use FrozenCLIPEmbedderWithCustomWords(True) or original diffusers embedder(False)
 use_custom_encoder = True
 
 # select last layer of CLIP model (Valid only use_custom_encoder=True)
