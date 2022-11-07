@@ -14,6 +14,7 @@ from diffusers.utils import deprecate, logging
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 
 from clip import FrozenCLIPEmbedderWithCustomWords
+from schedulers.dpm_solver import NoiseScheduleVP, DPM_Solver
 
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -192,26 +193,8 @@ class StableDiffusionPipeline(DiffusionPipeline):
                 raise ValueError(f"Unexpected latents shape, got {latents.shape}, expected {latents_shape}")
             latents = latents.to(self.device)
 
-        # set timesteps
-        self.scheduler.set_timesteps(num_inference_steps, device=self.device)
-
-        # Some schedulers like PNDM have timesteps as arrays
-        # It's more optimized to move all timesteps to correct device beforehand
-        timesteps_tensor = self.scheduler.timesteps.to(self.device)
-
-        # scale the initial noise by the standard deviation required by the scheduler
-        latents = latents * self.scheduler.init_noise_sigma
-
-        # prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
-        # eta (η) is only used with the DDIMScheduler, it will be ignored for other schedulers.
-        # eta corresponds to η in DDIM paper: https://arxiv.org/abs/2010.02502
-        # and should be between [0, 1]
-        accepts_eta = "eta" in set(inspect.signature(self.scheduler.step).parameters.keys())
-        extra_step_kwargs = {}
-        if accepts_eta:
-            extra_step_kwargs["eta"] = eta
-
-        for i, t in enumerate(self.progress_bar(timesteps_tensor)):
+        # sampler
+        def model_fn(latents, t):
             if do_classifier_free_guidance:
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = latents # torch.cat([latents] * 2)
@@ -228,13 +211,18 @@ class StableDiffusionPipeline(DiffusionPipeline):
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
                 # perform guidance
                 noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
+            return noise_pred
 
-            # compute the previous noisy sample x_t -> x_t-1
-            latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
-
-            # call the callback, if provided
-            if callback is not None and i % callback_steps == 0:
-                callback(i, t, latents)
+        ns = NoiseScheduleVP('discrete', alphas_cumprod=self.scheduler.alphas_cumprod)
+        dpm_solver = DPM_Solver(model_fn, ns, predict_x0=True, thresholding=False)
+        latents = dpm_solver.sample(
+            latents,
+            steps=num_inference_steps,
+            skip_type="time_uniform",
+            method="multistep",
+            order=2,
+            lower_order_final=True
+        )
 
         latents = 1 / 0.18215 * latents
         image = self.vae.decode(latents).sample
